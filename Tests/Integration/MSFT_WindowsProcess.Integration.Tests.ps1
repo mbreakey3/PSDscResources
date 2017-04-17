@@ -28,10 +28,19 @@ $script:testEnvironment = Enter-DscResourceTestEnvironment `
 try
 {
     Describe 'WindowsProcess Integration Tests without Credential' {
-        $testProcessPath = Join-Path -Path $script:testHelpersPath -ChildPath 'WindowsProcessTestProcess.exe'
-        $logFilePath = Join-Path -Path $script:testHelpersPath -ChildPath 'processTestLog.txt'
+        BeforeAll {
+            $script:testProcessPath = Join-Path -Path $script:testHelpersPath -ChildPath 'WindowsProcessTestProcess.exe'
+            $script:logFilePath = Join-Path -Path $script:testHelpersPath -ChildPath 'processTestLog.txt'
 
-        $configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcess.config.ps1'
+            $script:configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcess.config.ps1'
+        }
+
+        BeforeEach {
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+        }
 
         Context 'Should stop any current instances of the testProcess running' {
             $configurationName = 'MSFT_WindowsProcess_Setup'
@@ -39,14 +48,9 @@ try
 
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
-                    {
-                        Remove-Item -Path $logFilePath
-                    }
-
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Absent' `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath
@@ -60,13 +64,13 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Absent'
             }
 
             It 'Should not create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $false
             }
         }
@@ -75,21 +79,22 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartProcess'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should not have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $false
-            }
+            $logFileCreated = New-Object -TypeName 'System.Threading.EventWaitHandle' `
+                                         -ArgumentList @($false,
+                                                        [System.Threading.EventResetMode]::ManualReset,
+                                                        'LogFileIntegrationTest.LogFileCreated')
+            $null = $logFileCreated.Reset()
 
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Present' `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath
@@ -103,14 +108,16 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Present'
                 $currentConfig.ProcessCount | Should Be 1
             }
 
             It 'Should create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                # Wait for the process to finish writing to the log file.
+                $logFileCreated.WaitOne(20000)
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
             }
         }
@@ -119,25 +126,16 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartSecondProcess'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $true
-            }
- 
-            It 'Should not throw when removing the log file' {
-                { Remove-Item -Path $logFilePath } | Should not Throw
-            }
-
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Present' `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath
@@ -151,14 +149,14 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Present'
                 $currentConfig.ProcessCount | Should Be 1
             }
 
             It 'Should not create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $false
             }
         }
@@ -167,21 +165,16 @@ try
             $configurationName = 'MSFT_WindowsProcess_StopProcesses'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should not have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $false
-            }
-
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Absent' `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath
@@ -195,13 +188,13 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Absent'
             }
 
             It 'Should not create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $false
             }
         }
@@ -210,21 +203,22 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartMultipleProcesses'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should not have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $false
-            }
+            $logFileCreated = New-Object -TypeName 'System.Threading.EventWaitHandle' `
+                                         -ArgumentList @($false,
+                                                        [System.Threading.EventResetMode]::ManualReset,
+                                                        'LogFileIntegrationTest.LogFileCreated')
+            $null = $logFileCreated.Reset()
 
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Present' `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath
@@ -233,7 +227,7 @@ try
             }
 
             It 'Should start another process running' {
-                Start-Process -FilePath $testProcessPath -ArgumentList @($logFilePath)
+                Start-Process -FilePath $script:testProcessPath -ArgumentList @($script:logFilePath)
             }
        
             It 'Should be able to call Get-DscConfiguration without throwing' {
@@ -242,43 +236,34 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Present'
                 $currentConfig.ProcessCount | Should Be 2
             }
 
             It 'Should create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                # Wait for the process to finish writing to the log file.
+                $logFileCreated.WaitOne(20000)
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
             }
-        
-        
         }
 
         Context 'Should stop all of the testProcess instances from running' {
             $configurationName = 'MSFT_WindowsProcess_StopAllProcesses'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $true
-            }
-
-            It 'Should not throw when removing the log file' {
-                { Remove-Item -Path $logFilePath } | Should not Throw
-            }
-
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Absent' `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath
@@ -292,37 +277,46 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Absent'
             }
 
             It 'Should not create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $false
             }
         }
     }
     
     Describe 'WindowsProcess Integration Tests with Credential' {
-        $ConfigData = @{
-            AllNodes = @(
-                @{
-                    NodeName = '*'
-                    PSDscAllowPlainTextPassword = $true
-                }
-                @{
-                    NodeName = 'localhost'
-                }
-            )
+        BeforeAll {
+            $script:configData = @{
+                AllNodes = @(
+                    @{
+                        NodeName = '*'
+                        PSDscAllowPlainTextPassword = $true
+                    }
+                    @{
+                        NodeName = 'localhost'
+                    }
+                )
+            }
+
+            $script:testCredential = Get-AppVeyorAdministratorCredential
+
+            $script:testProcessPath = Join-Path -Path $script:testHelpersPath -ChildPath 'WindowsProcessTestProcess.exe'
+            $script:logFilePath = Join-Path -Path $script:testHelpersPath -ChildPath 'processTestLog.txt'
+
+            $script:configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcessWithCredential.config.ps1'
         }
 
-        $testCredential = Get-AppVeyorAdministratorCredential
-
-        $testProcessPath = Join-Path -Path $script:testHelpersPath -ChildPath 'WindowsProcessTestProcess.exe'
-        $logFilePath = Join-Path -Path $script:testHelpersPath -ChildPath 'processTestLog.txt'
-
-        $configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcessWithCredential.config.ps1'
+        BeforeEach {
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+        }
 
         Context 'Should stop any current instances of the testProcess running' {
             $configurationName = 'MSFT_WindowsProcess_SetupWithCredential'
@@ -330,19 +324,19 @@ try
 
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Absent' `
-                                         -Credential $testCredential `
+                                         -Credential $script:testCredential `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath `
-                                         -ConfigurationData $ConfigData
+                                         -ConfigurationData $script:configData
                     Start-DscConfiguration -Path $configurationPath -ErrorAction 'Stop' -Wait -Force
                 } | Should Not Throw
             }
@@ -353,13 +347,13 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Absent'
             }
 
             It 'Should not create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $false
             }
         }
@@ -368,21 +362,22 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartProcessWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should not have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $false
-            }
+            $logFileCreated = New-Object -TypeName 'System.Threading.EventWaitHandle' `
+                                         -ArgumentList @($false,
+                                                        [System.Threading.EventResetMode]::ManualReset,
+                                                        'LogFileIntegrationTest.LogFileCreated')
+            $null = $logFileCreated.Reset()
 
             It 'Should compile without throwing' {
                 {
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Present' `
-                                         -Credential $testCredential `
+                                         -Credential $script:testCredential `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath `
-                                         -ConfigurationData $ConfigData
+                                         -ConfigurationData $script:configData
                     Start-DscConfiguration -Path $configurationPath -ErrorAction 'Stop' -Wait -Force
                 } | Should Not Throw
             }
@@ -393,14 +388,16 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Present'
                 $currentConfig.ProcessCount | Should Be 1
             }
 
             It 'Should create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                # Wait for the process to finish writing to the log file.
+                $logFileCreated.WaitOne(20000)
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
             }
         }
@@ -409,30 +406,21 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartSecondProcessWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $true
-            }
- 
-            It 'Should not throw when removing the log file' {
-                { Remove-Item -Path $logFilePath } | Should not Throw
-            }
-
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Present' `
-                                         -Credential $testCredential `
+                                         -Credential $script:testCredential `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath `
-                                         -ConfigurationData $ConfigData
+                                         -ConfigurationData $script:configData
                     Start-DscConfiguration -Path $configurationPath -ErrorAction 'Stop' -Wait -Force
                 } | Should Not Throw
             }
@@ -443,14 +431,14 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Present'
                 $currentConfig.ProcessCount | Should Be 1
             }
 
             It 'Should not create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $false
             }
         }
@@ -459,26 +447,21 @@ try
             $configurationName = 'MSFT_WindowsProcess_StopProcessesWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should not have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $false
-            }
-
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Absent' `
-                                         -Credential $testCredential `
+                                         -Credential $script:testCredential `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath `
-                                         -ConfigurationData $ConfigData
+                                         -ConfigurationData $script:configData
                     Start-DscConfiguration -Path $configurationPath -ErrorAction 'Stop' -Wait -Force
                 } | Should Not Throw
             }
@@ -489,13 +472,13 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Absent'
             }
 
             It 'Should not create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $false
             }
         }
@@ -504,32 +487,33 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartMultipleProcessesWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should not have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $false
-            }
+            $logFileCreated = New-Object -TypeName 'System.Threading.EventWaitHandle' `
+                                         -ArgumentList @($false,
+                                                        [System.Threading.EventResetMode]::ManualReset,
+                                                        'LogFileIntegrationTest.LogFileCreated')
+            $null = $logFileCreated.Reset()
 
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Present' `
                                          -ErrorAction 'Stop' `
-                                         -Credential $testCredential `
+                                         -Credential $script:testCredential `
                                          -OutputPath $configurationPath `
-                                         -ConfigurationData $ConfigData
+                                         -ConfigurationData $script:configData
                     Start-DscConfiguration -Path $configurationPath -ErrorAction 'Stop' -Wait -Force
                 } | Should Not Throw
             }
 
             It 'Should start another process running' {
-                Start-Process -FilePath $testProcessPath -ArgumentList @($logFilePath)
+                Start-Process -FilePath $script:testProcessPath -ArgumentList @($script:logFilePath)
             }
        
             It 'Should be able to call Get-DscConfiguration without throwing' {
@@ -538,48 +522,39 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Present'
                 $currentConfig.ProcessCount | Should Be 2
             }
 
             It 'Should create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                # Wait for the process to finish writing to the log file.
+                $logFileCreated.WaitOne(20000)
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
             }
-        
-        
         }
 
         Context 'Should stop all of the testProcess instances from running' {
             $configurationName = 'MSFT_WindowsProcess_StopAllProcessesWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
-            It 'Should have a logfile already present' {
-                $pathResult = Test-Path $logFilePath
-                $pathResult | Should Be $true
-            }
- 
-            It 'Should not throw when removing the log file' {
-                { Remove-Item -Path $logFilePath } | Should not Throw
-            }
-
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $logFilePath)
+                    if (Test-Path -Path $script:logFilePath)
                     {
-                        Remove-Item -Path $logFilePath
+                        Remove-Item -Path $script:logFilePath
                     }
 
-                    .$configFile -ConfigurationName $configurationName
-                    & $configurationName -Path $testProcessPath `
-                                         -Arguments $logFilePath `
+                    .$script:configFile -ConfigurationName $configurationName
+                    & $configurationName -Path $script:testProcessPath `
+                                         -Arguments $script:logFilePath `
                                          -Ensure 'Absent' `
-                                         -Credential $testCredential `
+                                         -Credential $script:testCredential `
                                          -ErrorAction 'Stop' `
                                          -OutputPath $configurationPath `
-                                         -ConfigurationData $ConfigData
+                                         -ConfigurationData $script:configData
                     Start-DscConfiguration -Path $configurationPath -ErrorAction 'Stop' -Wait -Force
                 } | Should Not Throw
             }
@@ -590,13 +565,13 @@ try
 
             It 'Should return the correct configuration' {
                 $currentConfig = Get-DscConfiguration -ErrorAction 'Stop'
-                $currentConfig.Path | Should Be $testProcessPath
-                $currentConfig.Arguments | Should Be $logFilePath
+                $currentConfig.Path | Should Be $script:testProcessPath
+                $currentConfig.Arguments | Should Be $script:logFilePath
                 $currentConfig.Ensure | Should Be 'Absent'
             }
 
             It 'Should not create a logfile' {
-                $pathResult = Test-Path $logFilePath
+                $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $false
             }
         }

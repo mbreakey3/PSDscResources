@@ -32,16 +32,14 @@ try
     $script:configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcess.config.ps1'
 
     Describe 'WindowsProcess Integration Tests without Credential' {
-        BeforeEach {
+        Context 'Should stop any current instances of the testProcess running' {
+            $configurationName = 'MSFT_WindowsProcess_Setup'
+            $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
+
             if (Test-Path -Path $script:logFilePath)
             {
                 Remove-Item -Path $script:logFilePath
             }
-        }
-
-        Context 'Should stop any current instances of the testProcess running' {
-            $configurationName = 'MSFT_WindowsProcess_Setup'
-            $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
             It 'Should compile without throwing' {
                 {
@@ -76,6 +74,11 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartProcess'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             $logFileCreated = New-Object -TypeName 'System.Threading.EventWaitHandle' `
                                          -ArgumentList @($false,
                                                         [System.Threading.EventResetMode]::ManualReset,
@@ -84,11 +87,6 @@ try
 
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -116,6 +114,7 @@ try
                 $logFileCreated.WaitOne(10000)
                 $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
+                Remove-Item -Path $script:logFilePath
             }
         }
 
@@ -123,13 +122,13 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartSecondProcess'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -162,13 +161,13 @@ try
             $configurationName = 'MSFT_WindowsProcess_StopProcesses'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -200,6 +199,11 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartMultipleProcesses'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             $logFileCreated = New-Object -TypeName 'System.Threading.EventWaitHandle' `
                                          -ArgumentList @($false,
                                                         [System.Threading.EventResetMode]::ManualReset,
@@ -208,11 +212,6 @@ try
 
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -244,6 +243,7 @@ try
                 $logFileCreated.WaitOne(10000)
                 $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
+                Remove-Item -Path $script:logFilePath
             }
         }
 
@@ -251,13 +251,13 @@ try
             $configurationName = 'MSFT_WindowsProcess_StopAllProcesses'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -303,24 +303,17 @@ try
 
         $script:configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcessWithCredential.config.ps1'
 
-        BeforeEach {
-            if (Test-Path -Path $script:logFilePath)
-            {
-                Remove-Item -Path $script:logFilePath
-            }
-        }
-
         Context 'Should stop any current instances of the testProcess running' {
             $configurationName = 'MSFT_WindowsProcess_SetupWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -353,6 +346,11 @@ try
         Context 'Should start a new testProcess instance as running' {
             $configurationName = 'MSFT_WindowsProcess_StartProcessWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
+
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
 
             $logFileCreated = New-Object -TypeName 'System.Threading.EventWaitHandle' `
                                          -ArgumentList @($false,
@@ -391,6 +389,7 @@ try
                 $logFileCreated.WaitOne(10000)
                 $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
+                Remove-Item -Path $script:logFilePath
             }
         }
 
@@ -398,13 +397,13 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartSecondProcessWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -439,13 +438,13 @@ try
             $configurationName = 'MSFT_WindowsProcess_StopProcessesWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -479,6 +478,11 @@ try
             $configurationName = 'MSFT_WindowsProcess_StartMultipleProcessesWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             $logFileCreated = New-Object -TypeName 'System.Threading.EventWaitHandle' `
                                          -ArgumentList @($false,
                                                         [System.Threading.EventResetMode]::ManualReset,
@@ -487,11 +491,6 @@ try
 
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `
@@ -525,6 +524,7 @@ try
                 $logFileCreated.WaitOne(10000)
                 $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
+                Remove-Item -Path $script:logFilePath
             }
         }
 
@@ -532,13 +532,13 @@ try
             $configurationName = 'MSFT_WindowsProcess_StopAllProcessesWithCredential'
             $configurationPath = Join-Path -Path $TestDrive -ChildPath $configurationName
 
+            if (Test-Path -Path $script:logFilePath)
+            {
+                Remove-Item -Path $script:logFilePath
+            }
+
             It 'Should compile without throwing' {
                 {
-                    if (Test-Path -Path $script:logFilePath)
-                    {
-                        Remove-Item -Path $script:logFilePath
-                    }
-
                     .$script:configFile -ConfigurationName $configurationName
                     & $configurationName -Path $script:testProcessPath `
                                          -Arguments $script:logFilePath `

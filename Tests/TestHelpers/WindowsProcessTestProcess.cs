@@ -14,8 +14,6 @@ namespace WindowsProcessTestProcess
             {
                 string filePath = args[0];
 
-                //System.Threading.EventWaitHandle logFileCreated(false, ManualReset, 'LogFileIntegrationTest.LogFileCreated');
-
                 using (StreamWriter outputFile = new StreamWriter(filePath))
                 {
                     // Write to a log file so that we can see if the process ran
@@ -25,10 +23,9 @@ namespace WindowsProcessTestProcess
                     }
                 }
 
-                if (args.Length > 1)
+                // Cue the test that the logfile has been created
+                using (EventWaitHandle logFileCreated = new EventWaitHandle(false, EventResetMode.ManualReset, "LogFileIntegrationTest.LogFileCreated"))
                 {
-                    // Cue the test that the logfile has been created
-                    EventWaitHandle logFileCreated = args[1];
                     logFileCreated.Set();
                 }
             }

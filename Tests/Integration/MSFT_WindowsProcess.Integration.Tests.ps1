@@ -27,14 +27,11 @@ $script:testEnvironment = Enter-DscResourceTestEnvironment `
 
 try
 {
+    $script:testProcessPath = Join-Path -Path $script:testHelpersPath -ChildPath 'WindowsProcessTestProcess.exe'
+    $script:logFilePath = Join-Path -Path $script:testHelpersPath -ChildPath 'processTestLog.txt'
+    $script:configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcess.config.ps1'
+
     Describe 'WindowsProcess Integration Tests without Credential' {
-        BeforeAll {
-            $script:testProcessPath = Join-Path -Path $script:testHelpersPath -ChildPath 'WindowsProcessTestProcess.exe'
-            $script:logFilePath = Join-Path -Path $script:testHelpersPath -ChildPath 'processTestLog.txt'
-
-            $script:configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcess.config.ps1'
-        }
-
         BeforeEach {
             if (Test-Path -Path $script:logFilePath)
             {
@@ -116,7 +113,7 @@ try
 
             It 'Should create a logfile' {
                 # Wait for the process to finish writing to the log file.
-                $logFileCreated.WaitOne(20000)
+                $logFileCreated.WaitOne(10000)
                 $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
             }
@@ -244,7 +241,7 @@ try
 
             It 'Should create a logfile' {
                 # Wait for the process to finish writing to the log file.
-                $logFileCreated.WaitOne(20000)
+                $logFileCreated.WaitOne(10000)
                 $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
             }
@@ -290,26 +287,21 @@ try
     }
     
     Describe 'WindowsProcess Integration Tests with Credential' {
-        BeforeAll {
-            $script:configData = @{
-                AllNodes = @(
-                    @{
-                        NodeName = '*'
-                        PSDscAllowPlainTextPassword = $true
-                    }
-                    @{
-                        NodeName = 'localhost'
-                    }
-                )
-            }
-
-            $script:testCredential = Get-AppVeyorAdministratorCredential
-
-            $script:testProcessPath = Join-Path -Path $script:testHelpersPath -ChildPath 'WindowsProcessTestProcess.exe'
-            $script:logFilePath = Join-Path -Path $script:testHelpersPath -ChildPath 'processTestLog.txt'
-
-            $script:configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcessWithCredential.config.ps1'
+        $script:configData = @{
+            AllNodes = @(
+                @{
+                    NodeName = '*'
+                    PSDscAllowPlainTextPassword = $true
+                }
+                @{
+                    NodeName = 'localhost'
+                }
+            )
         }
+
+        $script:testCredential = Get-AppVeyorAdministratorCredential
+
+        $script:configFile = Join-Path -Path $PSScriptRoot -ChildPath 'MSFT_WindowsProcessWithCredential.config.ps1'
 
         BeforeEach {
             if (Test-Path -Path $script:logFilePath)
@@ -396,7 +388,7 @@ try
 
             It 'Should create a logfile' {
                 # Wait for the process to finish writing to the log file.
-                $logFileCreated.WaitOne(20000)
+                $logFileCreated.WaitOne(10000)
                 $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
             }
@@ -530,7 +522,7 @@ try
 
             It 'Should create a logfile' {
                 # Wait for the process to finish writing to the log file.
-                $logFileCreated.WaitOne(20000)
+                $logFileCreated.WaitOne(10000)
                 $pathResult = Test-Path $script:logFilePath
                 $pathResult | Should Be $true
             }

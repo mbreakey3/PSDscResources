@@ -25,10 +25,10 @@ build: false
 
 test_script:
     - ps: |
-      $scriptBlock = @"
-      Invoke-AppveyorTestScriptTask
-      "@
-      C:\PowerShell6\powershell.exe -command $scriptBlock
+        $scriptBlock = @"
+        Invoke-AppveyorTestScriptTask
+        "@
+        C:\PowerShell6\powershell.exe -command $scriptBlock
 
 #---------------------------------#
 #      deployment configuration   #
